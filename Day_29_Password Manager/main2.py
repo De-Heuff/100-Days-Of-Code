@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import messagebox
 from random import choice, randint, shuffle
 import pyperclip
+import json
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 
@@ -11,11 +12,11 @@ def generate_password():
     numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     symbols = ['!', '#', '$', '%', '&', '(', ')', '*', '+']
 
-    password_letters = [choice(letters) for _ in range(randint(8, 10))]
+    password_letters = [choice(letters) for _ in range(randint(5, 10))]
     password_symbols = [choice(symbols) for _ in range(randint(3, 6))]
     password_numbers = [choice(numbers) for _ in range(randint(3, 6))]
 
-    password_list = password_numbers + password_symbols + password_symbols
+    password_list = password_numbers + password_symbols + password_letters
 
     shuffle(password_list)
 
@@ -24,29 +25,70 @@ def generate_password():
     pyperclip.copy(password)
 
 # ---------------------------- SAVE PASSWORD ------------------------------- #
-# TODO Create a function called save()
 
 def save():
 
-# TODO Write to the data inside the entries to a data.txt file when add button is clicked
     a = website_entry.get()
     b = user_name_entry.get()
     c = password_entry.get()
+    new_data = {
+        a: {
+            "email": b,
+            "password": c,
+        }
+    }
 
-    if len(a) or len(c) == 0:
+    if len(a) == 0 or len(c) == 0:
         messagebox.showerror(title="You made an oopsie", message="Please don't leave any fields empty!")
         return
 
-    is_ok = messagebox.askokcancel(title=a, message=f"These are the details entered: \n {b} \n {c} \n OK to save?")
+    else:
+        try:
+            with open("data.json", "r") as data_file:
+                #Read from JSON
+                data = json.load(data_file)
 
-    if is_ok == True:
+        except FileNotFoundError:
+            with open("data.json", "w") as data_file:
+                json.dump(new_data, data_file, indent=4)
 
-        with open("data.txt", "a") as f:
-            f.write(f"{a} | {b} | {c} \n")
-    # TODO Each website and e-mail should be on a new line in the file
-        website_entry.delete(0, "end")
-        password_entry.delete(0, "end")
-# TODO Clear entries
+        else:
+            with open("data.json", "w") as data_file:
+                # Update JSON with New Data
+                data.update(new_data)
+                #write updated data to JSON
+                json.dump(data, data_file, indent=4)
+
+        finally:
+            website_entry.delete(0, "end")
+            password_entry.delete(0, "end")
+
+# ---------------------------- Search function ------------------------------- #
+
+def find_password():
+    website = website_entry.get()
+    try:
+        with open("data.json", "r") as data_file:
+            # Read from JSON
+            dict = json.load(data_file)
+
+    except FileNotFoundError:
+        messagebox.showerror(title="Error", message="No data file found.")
+        return
+
+    except json.JSONDecodeError:
+        messagebox.showerror(title="Error", message="Data file is corrupted.")
+        return
+
+    else:
+        website_data = dict.get(website)
+        if website_data:
+            email = website_data.get("email")
+            password = website_data.get("password")
+            messagebox.showinfo(title="Data", message=f"These are the details for {website}: \n E-mail: {email} \n Password: {password}")
+        else:
+            messagebox.showerror(title="Error", message=f"No details for {website} exist.")
+
 # ---------------------------- UI SETUP ------------------------------- #
 window = Tk()
 window.title("Password Manager")
@@ -66,15 +108,15 @@ user_name.grid(column=0, row=3, sticky="w")
 password = Label(text="Password:")
 password.grid(column=0, row=4, sticky="w")
 
-website_entry = Entry(width=35)
+website_entry = Entry(width=33)
 website_entry.grid(row=2, column=1, columnspan=2, sticky="w")
 website_entry.focus()
 
-user_name_entry = Entry(width=35)
+user_name_entry = Entry(width=53)
 user_name_entry.grid(row=3, column=1, columnspan=2, sticky="w")
 user_name_entry.insert(0, "grogu@koekjes.tat")
 
-password_entry = Entry(width=35)
+password_entry = Entry(width=33)
 password_entry.grid(row=4, column=1, sticky="w")
 
 generate_password = Button(text="Generate Password", command=generate_password)
@@ -82,5 +124,8 @@ generate_password.grid(row=4, column=2, sticky="w")
 
 add_button = Button(text="Add", width=30, command=save)
 add_button.grid(row=5, column=1, columnspan=2, sticky="we")
+
+search_button = Button(text="Search", width=15, command=find_password)
+search_button.grid(row=2, column=2, sticky="w")
 
 window.mainloop()
